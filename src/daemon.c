@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
         break;
       case 'i':
 	INFO("optarg: %s\n",optarg);
-        newid = atol(optarg);
+        newid = strtoul(optarg);
 	INFO("newid: %u\n", newid);
         break;
       case 'n':
