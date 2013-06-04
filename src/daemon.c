@@ -216,7 +216,9 @@ int main(int argc, char *argv[]) {
         profiledir = optarg;
         break;
       case 'i':
+	INFO("optarg: %s\n",optarg);
         newid = atol(optarg);
+	INFO("newid: %u\n", newid);
         break;
       case 'n':
         daemonize = 0;
@@ -240,7 +242,7 @@ int main(int argc, char *argv[]) {
   if(daemonize) daemon_start((char *)statedir, (char *)pidfile);
   co_id_set_from_int(newid);
   nodeid_t id = co_id_get();
-  DEBUG("Node ID: %d", (int) id.id);
+  INFO("Node ID: %u\n", id.id);
   co_loop_create();
   co_ifaces_create();
   co_profiles_create();
