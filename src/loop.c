@@ -111,28 +111,6 @@ static int _co_loop_match_process_i(const void *proc, const void *pid) {
   return -1;
 }
 
-static void _co_loop_hangup_socket_i(list_t *list, lnode_t *lnode, void *context) {
-  co_socket_t *sock = lnode_get(lnode);
-  int *efd = context;
-
-  if((sock->fd == *efd) || (sock->rfd == *efd)) {
-    sock->hangup(sock, context);
-  }
-
-  return;
-}
-
-static void _co_loop_poll_socket_i(list_t *list, lnode_t *lnode, void *context) {
-  co_socket_t *sock = lnode_get(lnode);
-  int *efd = context;
-
-  if((sock->fd == *efd) || (sock->rfd == *efd)) {
-    sock->poll_cb(sock, context);
-  }
-
-  return;
-}
-
 static void _co_loop_poll_process_i(list_t *list, lnode_t *lnode, void *context) {
   pid_t *pid = context;
   co_process_t *proc = lnode_get(lnode);
@@ -158,19 +136,22 @@ static void _co_loop_destroy_process_i(list_t *list, lnode_t *lnode, void *conte
 }
 
 static void _co_loop_poll_sockets(void) {
+  co_socket_t *sock = NULL;
   int n = epoll_wait(poll_fd, events, LOOP_MAXEVENT, LOOP_TIMEOUT);
   
   for(int i = 0; i < n; i++) {
+    sock = events[i].data.ptr;
+    sock->events = events[i].events;
     if((events[i].events & EPOLLERR) || 
       (!(events[i].events & EPOLLIN))) {
       WARN("EPOLL Error!");
-	    close (events[i].data.fd);
+	    close (sock->fd);
 	    continue;
     } else if(events[i].events & EPOLLHUP) {
       DEBUG("Hanging up socket.");
-      list_process(sockets, (void *)&events[i].data.fd, _co_loop_hangup_socket_i);
-	  } else {
-      list_process(sockets, (void *)&events[i].data.fd, _co_loop_poll_socket_i);
+      sock->hangup(sock, (void *)&events[i].data.ptr);
+    } else {
+      sock->poll_cb(sock, (void *)&events[i].data.ptr);
     }
   }
 
@@ -275,7 +256,7 @@ int co_loop_add_socket(void *new_sock, void *context) {
     CHECK((lnode_get(node) == sock), "Different socket with URI %s already registered.", sock->uri);
     if((sock->listen) && (sock->rfd > 0) && (!sock->rfd_registered)) {
       DEBUG("Adding RFD %d to epoll.", sock->rfd);
-      event.data.fd = sock->rfd;
+      event.data.ptr = sock;
       CHECK((epoll_ctl(poll_fd, EPOLL_CTL_ADD, sock->rfd, &event)) != -1, "Failed to add receive FD epoll event.");
       sock->rfd_registered = true; 
     } else {
@@ -283,7 +264,7 @@ int co_loop_add_socket(void *new_sock, void *context) {
     }
   } else if((sock->listen) && (sock->fd > 0) && !sock->fd_registered) {
       DEBUG("Adding FD %d to epoll.", sock->fd);
-      event.data.fd = sock->fd;
+      event.data.ptr = sock;
       CHECK((epoll_ctl(poll_fd, EPOLL_CTL_ADD, sock->fd, &event)) != -1, "Failed to add listen FD epoll event.");
       sock->fd_registered = true; 
       list_append(sockets, lnode_create((void *)sock));

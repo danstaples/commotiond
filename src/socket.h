@@ -64,6 +64,7 @@ typedef struct {
   int (*getopt)(void *self, int level, int option, void *optval, socklen_t optvallen);
   int (*poll_cb)(void *self, void *context);
   int (*register_cb)(void *self, void *context);
+  unsigned int events;
 } co_socket_t;
 
 /**

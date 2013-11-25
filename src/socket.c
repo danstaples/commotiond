@@ -84,6 +84,7 @@ int co_socket_init(void *self) {
     this->fd_registered = false;
     this->rfd_registered = false;
     this->listen = false;
+    this->events = 0;
     return 1;
   } else return 0;
 }
@@ -221,6 +222,7 @@ int unix_socket_init(void *self) {
     this->fd_registered = false;
     this->rfd_registered = false;
     this->listen = false;
+    this->events = 0;
     this->uri = strdup("unix://");
     return 1;
   } else return 0;
